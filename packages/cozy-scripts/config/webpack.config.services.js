@@ -4,7 +4,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const webpack = require('webpack')
 const paths = require('../utils/paths')
-const { target } = require('./webpack.vars')
+const { target, isDebugMode } = require('./webpack.vars')
 
 const servicesFolder = paths.appServicesFolder
 const servicesPaths = fs.readdirSync(servicesFolder)
@@ -24,7 +24,8 @@ const config = {
     strategy: {
       plugins: 'replace',
       output: 'replace',
-      entry: 'replace'
+      entry: 'replace',
+      module: 'replace'
     }
   },
   entry: servicesEntries,
@@ -34,6 +35,41 @@ const config = {
   },
   target: 'node',
   devtool: false,
+  module: {
+    rules: [
+      {
+        enforce: 'pre', // was preLoaders property in webpack v1
+        test: /\.js$/,
+        loader: 'eslint-loader',
+        exclude: /node_modules/,
+        options: {
+          extends: ['cozy-app'],
+          emitWarning: isDebugMode
+        }
+      },
+      {
+        test: /\.js$/,
+        exclude: /(node_modules|cozy-(bar|client-js))/,
+        loader: 'babel-loader',
+        options: {
+          cacheDirectory: 'node_modules/.cache/babel-loader',
+          babelrc: false,
+          presets: [
+            require.resolve('babel-preset-env'),
+            {
+              targets: { node: 8 },
+              // don't transform polyfills
+              useBuiltIns: false
+            }
+          ]
+        }
+      },
+      {
+        test: /\.json$/,
+        loader: 'json-loader'
+      }
+    ]
+  },
   plugins: [
     new webpack.DefinePlugin({
       __TARGET__: JSON.stringify('services')
